@@ -1,0 +1,86 @@
+ZBasic {
+	Program = Body end
+	Body = (Statement | Function | EndExp)*
+	Function = kw_function identifier Parameters Body kw_end
+	Parameters = SymOpenBrace ParameterNames? SymCloseBrace
+	ParameterNames = identifier ("," identifier)*
+	FunctionDefinition = kw_function identifier
+	Statement = (Let | Exp | Return | Function | If)
+    If = kw_if LogicExp kw_then Body kw_end
+	Return = "return" Exp
+	Let = kw_let identifier SymAssign Exp
+	Call = Name CallArguments
+    
+    Name = identifier
+	CallArguments = "(" Arguments? ")"
+	Arguments = Exp ("," Exp)*
+    Exp = LogicExp | String
+	EndExp = ";" | eol
+    
+    LogicExp = LogicExp "=" AddExp -- equals
+             | LogicExp ">" AddExp -- greaterThan
+             | LogicExp "<" AddExp -- lessThan
+             | LogicExp kw_and LogicExp -- and
+             | kw_not LogicExp -- not
+             | AddExp
+    
+    AddExp = AddExp "+" MulExp  -- plus
+	   	   | AddExp "-" MulExp  -- minus
+		   | MulExp
+	MulExp = PriExp "*" PriExp  -- multiply
+		   | PriExp "/" PriExp  -- divide
+		   | PriExp
+    PriExp = "(" Exp ")"  -- paren
+           | Number
+		   | Call
+		   | identifier
+	Number = Float | Integer
+	Float   = digit+ "." digit+
+    Integer = digit+
+
+    LogicOperator = "=" | ">" | "<" | kw_not | ">=" | "<=" | kw_and
+	String = "\"" (~"\"" any)* "\""
+	
+	identifier (an identifier) = ~keyword identifierName
+    identifierName = identifierStart identifierPart*
+
+    identifierStart = letter | "$" | "_"
+    identifierPart = identifierStart
+	SymAssign = ":="
+	SymComma = ","
+	SymOpenBrace = "("
+	SymCloseBrace = ")"
+
+	comment = "#" (~eol any)* eol
+
+	keyword = kw_function
+			| kw_sub
+			| kw_let
+			| kw_end
+			| kw_return
+            | kw_not
+            | kw_true
+            | kw_false
+            | kw_and
+            | kw_if
+            | kw_else
+            | kw_then
+	kw_function = caseInsensitive<"function">
+	kw_sub = caseInsensitive<"sub">
+	kw_let = caseInsensitive<"let">
+	kw_end = caseInsensitive<"end">
+	kw_return = caseInsensitive<"return">
+    kw_not = caseInsensitive<"not">
+    kw_true = caseInsensitive<"true">
+    kw_false = caseInsensitive<"false">
+    kw_and = caseInsensitive<"and">
+    kw_if = caseInsensitive<"if">
+    kw_else = caseInsensitive<"else">
+    kw_then = caseInsensitive<"then">
+
+	eol = "\n" | "\r"
+
+	_ = spaces
+
+	space += comment
+}

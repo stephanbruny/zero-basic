@@ -1,14 +1,18 @@
 ZBasic {
 	Program = Body end
 	Body = (Statement | Function | EndExp)*
-	Function = kw_function identifier Parameters Body kw_end
+	Function = kw_function identifier Parameters kw_as identifier Body kw_end
 	Parameters = SymOpenBrace ParameterNames? SymCloseBrace
-	ParameterNames = identifier ("," identifier)*
+	ParameterNames = Parameter ("," Parameter)*
+    Parameter = identifier kw_as identifier
 	FunctionDefinition = kw_function identifier
-	Statement = (Let | Exp | Return | Function | If)
+	Statement = (VariableAssigment | Let | Exp | Return | Function | IfElse | If)
     If = kw_if LogicExp kw_then Body kw_end
+    IfElse = kw_if LogicExp kw_then Body kw_else Body kw_end
 	Return = "return" Exp
-	Let = kw_let identifier SymAssign Exp
+    VariableAssigment = Name Assignment
+	Let = kw_let Parameter Assignment
+    Assignment = SymAssign Exp
 	Call = Name CallArguments
     
     Name = identifier
@@ -21,6 +25,7 @@ ZBasic {
              | LogicExp ">" AddExp -- greaterThan
              | LogicExp "<" AddExp -- lessThan
              | LogicExp kw_and LogicExp -- and
+             | LogicExp kw_or LogicExp -- or
              | kw_not LogicExp -- not
              | AddExp
     
@@ -31,9 +36,10 @@ ZBasic {
 		   | PriExp "/" PriExp  -- divide
 		   | PriExp
     PriExp = "(" Exp ")"  -- paren
-           | Number
 		   | Call
+           | Number
 		   | identifier
+           | String
 	Number = Float | Integer
 	Float   = digit+ "." digit+
     Integer = digit+
@@ -53,30 +59,34 @@ ZBasic {
 
 	comment = "#" (~eol any)* eol
 
-	keyword = kw_function
-			| kw_sub
-			| kw_let
-			| kw_end
-			| kw_return
-            | kw_not
-            | kw_true
-            | kw_false
-            | kw_and
-            | kw_if
-            | kw_else
-            | kw_then
+	keyword = kw_function ~identifierPart
+			| kw_sub ~identifierPart
+			| kw_let ~identifierPart
+			| kw_end ~identifierPart
+			| kw_return ~identifierPart
+            | kw_not ~identifierPart
+            | kw_or ~identifierPart
+            | kw_true ~identifierPart
+            | kw_false ~identifierPart
+            | kw_and ~identifierPart
+            | kw_if ~identifierPart
+            | kw_else ~identifierPart
+            | kw_then ~identifierPart
+            | kw_as ~identifierPart
 	kw_function = caseInsensitive<"function">
 	kw_sub = caseInsensitive<"sub">
 	kw_let = caseInsensitive<"let">
 	kw_end = caseInsensitive<"end">
 	kw_return = caseInsensitive<"return">
     kw_not = caseInsensitive<"not">
+    kw_or = caseInsensitive<"or">
     kw_true = caseInsensitive<"true">
     kw_false = caseInsensitive<"false">
     kw_and = caseInsensitive<"and">
     kw_if = caseInsensitive<"if">
     kw_else = caseInsensitive<"else">
     kw_then = caseInsensitive<"then">
+    kw_as = caseInsensitive<"as">
 
 	eol = "\n" | "\r"
 

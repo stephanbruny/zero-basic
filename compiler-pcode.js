@@ -26,7 +26,7 @@ function compileAst(token = {}, memory = [], code = []) {
     }
 
     if (token.not) {
-        const right = compile(token.not);
+        const right = compile(token.not[0])
         return right.concat([
             put('push'), 
             put('not')
@@ -65,6 +65,10 @@ function compileAst(token = {}, memory = [], code = []) {
         return compileLeftRight([token.and.left[0], token.and.right[0]], 'and');
     }
 
+    if (token.or) {
+        return compileLeftRight([token.or.left[0], token.or.right[0]], 'or');
+    }
+
     if (token.type) {
         if (token.type === 'string') {
             const base64 = Buffer.from(token.value).toString('base64');
@@ -75,7 +79,14 @@ function compileAst(token = {}, memory = [], code = []) {
 
     if (token.let) {
         const ops = compile(token.let.value, memory);
-        const varname = token.let.identifier.identifier;
+        const varname = token.let.identifier.parameter.name;
+        ops.push(put('store', null, { varname }));
+        return ops;
+    }
+
+    if (token.assign) {
+        const varname = token.assign.name.identifier;
+        const ops = compile(token.assign.value, memory);
         ops.push(put('store', null, { varname }));
         return ops;
     }
@@ -99,9 +110,9 @@ function compileAst(token = {}, memory = [], code = []) {
     if (token.function) {
         const fnName = token.function.name.identifier;
         const body = compile(token.function.body[0]);
-        const params = (token.function.parameters || []).flatMap(param => [
+        const params = (token.function.parameters || []).reverse().flatMap(param => [
             put('pop'),
-            put('store' , null, { varname: param.identifier, parameter: true })
+            put('store' , null, { varname: param.parameter.name, parameter: true })
         ]);
         params[0].blob.symbol = fnName;
         body[body.length - 1].blob.symbol = `${fnName}__end`;
@@ -125,14 +136,27 @@ function compileAst(token = {}, memory = [], code = []) {
         const ifLabel = crypto.randomUUID(); // create unique labels
         const ifEndLabel = `${ifLabel}__end`;
         const clause = compile(token.if.clause[0], memory);
-        const body = compile(token.if.body[0], memory)
+        const body = compile(token.if.body[0], memory);
+        
+        
         body[0].blob.symbol = ifLabel;
         body[body.length -1].blob.symbol = ifEndLabel;
+        
+        const header = [
+            put('jump?', null, { label: ifLabel }),
+            put('jump', null, { label: ifEndLabel, add: 1 }),
+        ];
+        
+        const elseBody = token.if.else && compile(token.if.else[0], memory);
+        if (elseBody) {
+            const elseLabel = `${ifLabel}__else`;
+            elseBody[0].blob.symbol = `${ifLabel}__else`;
+            elseBody.push(put('jump', null, { label: ifEndLabel }));
+            header.unshift(put('jump!', null, { label: elseLabel }));
+        }
         return clause
-            .concat([
-                put('jump?', null, { label: ifLabel }),
-                put('jump', null, { label: ifEndLabel, add: 1 }),
-            ])
+            .concat(header)
+            .concat(elseBody || [])
             .concat(body)
     }
     return put('nop', undefined, JSON.stringify(token));
@@ -153,7 +177,7 @@ function build(opcodes = []) {
             return { op: code.op, value: adr }
         }
 
-        if (code.op === 'jump' || code.op === 'jump?' && code.value === null) {
+        if (code.op.startsWith('jump') && code.value === null) {
             if (code.blob.label) {
                 return {
                     op: code.op,

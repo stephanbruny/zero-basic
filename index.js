@@ -4,20 +4,27 @@ const { interpret } = require('./interpreter');
 const { compile } = require('./compiler-pcode');
 
 const code = `
-function asdf(text, x)
+function asdf(text as string, x as number) as number
+	print("asdf()", text, x)
 	return 0
 end
-let x := 10
-let foo := "FOO"
-if x < 5 then
-	let x := 15
+let x as int := 1
+let foo as string := "FOO"
+if x > 5 then
+	x := 15
+else
+	x := 5
 end
-print("X", x, foo)
+print("X", x, foo, NOT foo = "FOO")
+asdf("ASDF", 1337)
+
+let a as number := 1
+let b as number := 0
 
 `;
 
 const ast = Parser.parse(code);
-console.log(JSON.stringify(ast, null, 2))
+//console.log(JSON.stringify(ast, null, 2))
 const bitcode = compile(ast);
 
 function runBitcode(bitcode = []) {
@@ -38,6 +45,7 @@ function runBitcode(bitcode = []) {
 	}
 
 	while (pc < bitcode.length) {
+		// console.log(pc, current)
 		if (!current) {
 			console.error('Unexpected exit', pc);
 			break;
@@ -102,6 +110,22 @@ function runBitcode(bitcode = []) {
 			ac = b > a;
 		}
 
+		if (current.op === 'and') {
+			const a = stack.pop();
+			const b = stack.pop();
+			ac = b && a;
+		}
+
+		if (current.op === 'or') {
+			const a = stack.pop();
+			const b = stack.pop();
+			ac = b || a;
+		}
+
+		if (current.op === 'not') {
+			ac = !stack.pop();
+		}
+
 		if (current.op === 'jump?') {
 			if (ac === true) {
 				next(current.value);
@@ -139,8 +163,3 @@ function runBitcode(bitcode = []) {
 };
 
 runBitcode(bitcode)
-
-// console.log(bitcode)
-// console.log(
-// 	runBitcode(bitcode)
-// )

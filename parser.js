@@ -14,9 +14,10 @@ const semantics = grammar.createSemantics().addOperation('eval', {
 	Body(e) {
 		return { body: evalNodes(e) }
 	},
-	'Function'(kw_function, identifier, parameters, statements, kw_end) {
+	'Function'(kw_function, identifier, parameters, _kw_as, type, statements, kw_end) {
 		return { 'function': {
 			name: identifier.eval(),
+            type: type.eval().identifier,
 			parameters: parameters.eval().pop(),
 			body: evalNodes(statements)
 		}};
@@ -27,6 +28,14 @@ const semantics = grammar.createSemantics().addOperation('eval', {
 	ParameterNames(first, comma, tail) {
 		return [first.eval()].concat(evalNodes(tail));
 	},
+    Parameter(id, _as, type) {
+        return {
+            parameter: {
+                name: id.eval().identifier,
+                type: type.eval().identifier
+            }
+        }
+    },
 	Return(_return, e) {
 		return { return: e.eval() };
 	},
@@ -47,11 +56,20 @@ const semantics = grammar.createSemantics().addOperation('eval', {
 	Arguments(head, comma, tail) {
 		return evalNodes(head).concat(evalNodes(tail));
 	},
-    If(kw_if, logicExp, kw_then, statements, kw_end) {
+    If(kw_if, logicExp, kw_then, statements, _end) {
         return {
             'if': {
                 clause: evalNodes(logicExp),
-                body: evalNodes(statements)
+                body: evalNodes(statements),
+            }
+        }
+    },
+    IfElse(kw_if, logicExp, kw_then, statements, _else, elseBody, _end) {
+        return {
+            'if': {
+                clause: evalNodes(logicExp),
+                body: evalNodes(statements),
+                else: evalNodes(elseBody)
             }
         }
     },
@@ -73,6 +91,11 @@ const semantics = grammar.createSemantics().addOperation('eval', {
     LogicExp_and(left, eq, right) {
         return {
             'and': { left: evalNodes(left), right: evalNodes(right) }
+        }
+    },
+    LogicExp_or(left, eq, right) {
+        return {
+            'or': { left: evalNodes(left), right: evalNodes(right) }
         }
     },
     LogicExp_not(eq, right) {
@@ -116,14 +139,25 @@ const semantics = grammar.createSemantics().addOperation('eval', {
 	identifier(a) {
 		return { identifier: this.sourceString }
 	},
-	Let(kw, ident, _, exp) {
+	Let(kw, ident, assign) {
 		return { 
 			let: {
 				identifier: ident.eval(),
-				value: exp.eval() 
+				value: assign.eval() 
 			}
 		}
-	}
+	},
+    VariableAssigment(name, assignment) {
+        return {
+            assign: {
+                name: name.eval(),
+                value: assignment.eval()
+            }
+        }
+    },
+    Assignment(_, value) {
+        return value.eval()
+    }
 });
 
 module.exports = ({
